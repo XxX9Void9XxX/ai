@@ -1,17 +1,15 @@
 from flask import Flask, request, jsonify
 import os
-from transformers import pipeline
+from groq import Groq
 
 app = Flask(__name__)
 
-# This downloads and loads a small open-source AI model directly into memory.
-# Note: 'distilgpt2' is a lightweight model. It's not as smart as GPT-4, but it runs locally!
-print("Loading AI model... (This might take a minute on startup)")
-generator = pipeline('text-generation', model='distilgpt2')
+# Initialize the Groq client. It will pull your key securely from Render.
+client = Groq(api_key=os.environ.get("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"))
 
 @app.route('/', methods=['GET'])
 def home():
-    return "My Self-Hosted AI is running!"
+    return "My Custom Groq AI is running on Render!"
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -22,19 +20,27 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
-        # Generate text based on the user's input
-        # max_length controls how long the response is
-        output = generator(user_message, max_length=50, num_return_sequences=1)
+        # We are using Meta's incredibly smart Llama 3.3 (70 billion parameters)
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    # Customize your AI's brain/personality right here!
+                    "content": "You are a highly intelligent and helpful AI assistant."
+                },
+                {
+                    "role": "user",
+                    "content": user_message,
+                }
+            ],
+            model="llama-3.3-70b-versatile",
+        )
         
-        # Extract the text from the model's output
-        ai_response = output[0]['generated_text']
-        
-        return jsonify({"response": ai_response})
+        return jsonify({"response": chat_completion.choices[0].message.content})
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    # We use threaded=False to save memory on Render's free tier
-    app.run(host='0.0.0.0', port=port, threaded=False)
+    app.run(host='0.0.0.0', port=port)
