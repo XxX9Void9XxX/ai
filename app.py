@@ -4,9 +4,6 @@ from groq import Groq
 
 app = Flask(__name__)
 
-# Initialize the Groq client. It will pull your key securely from Render.
-client = Groq(api_key=os.environ.get("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"))
-
 @app.route('/', methods=['GET'])
 def home():
     return "My Custom Groq AI is running on Render!"
@@ -20,12 +17,15 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
-        # We are using Meta's incredibly smart Llama 3.3 (70 billion parameters)
+        # We moved the client inside the chat function! 
+        # This prevents the server from crashing on startup if the key is missing.
+        # Groq() automatically looks for the GROQ_API_KEY environment variable.
+        client = Groq()
+        
         chat_completion = client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
-                    # Customize your AI's brain/personality right here!
                     "content": "You are a highly intelligent and helpful AI assistant."
                 },
                 {
@@ -39,6 +39,7 @@ def chat():
         return jsonify({"response": chat_completion.choices[0].message.content})
         
     except Exception as e:
+        # If there is an API key error, it will now safely tell you here instead of crashing the server!
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
